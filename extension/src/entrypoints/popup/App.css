@@ -1,0 +1,143 @@
+#root {
+  width: 420px;
+}
+
+.popup-shell {
+  box-sizing: border-box;
+  width: 420px;
+  min-height: 520px;
+  padding: 18px;
+  background: #f8faf9;
+  color: #171717;
+}
+
+.popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: #59625d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #111;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #a7a7a7;
+  box-shadow: 0 0 0 4px rgba(167, 167, 167, 0.18);
+}
+
+.status-dot--loading {
+  background: #a87513;
+  box-shadow: 0 0 0 4px rgba(168, 117, 19, 0.18);
+}
+
+.status-dot--ready {
+  background: #188453;
+  box-shadow: 0 0 0 4px rgba(24, 132, 83, 0.18);
+}
+
+.status-dot--error {
+  background: #b42318;
+  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.18);
+}
+
+.summary {
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid #d9dfdc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.summary-title {
+  display: -webkit-box;
+  margin: 0 0 7px;
+  overflow: hidden;
+  color: #151515;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.summary-detail {
+  margin: 0;
+  color: #5f6863;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.button {
+  min-height: 40px;
+  border: 1px solid #c9d1cd;
+  border-radius: 7px;
+  background: #fff;
+  color: #161616;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: #eef3f0;
+}
+
+.button:disabled {
+  color: #8c928f;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  border-color: #126a43;
+  background: #188453;
+  color: #fff;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: #126a43;
+}
+
+.transcript {
+  box-sizing: border-box;
+  width: 100%;
+  height: 315px;
+  resize: none;
+  border: 1px solid #d4dbd7;
+  border-radius: 8px;
+  background: #fff;
+  color: #181818;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 12px;
+}
+
+.transcript::placeholder {
+  color: #858c88;
+}

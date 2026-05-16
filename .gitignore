@@ -1,0 +1,5 @@
+ARCHITECTURE.md
+.env
+.wrangler
+/node_modules
+/.output
