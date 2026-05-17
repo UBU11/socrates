@@ -219,7 +219,7 @@ class TranscriptController {
     if (!this.host) {
       this.host = document.createElement('aside');
       this.host.id = HOST_ID;
-      this.host.classList.add('block');
+      this.host.style.display = 'block';
       this.shadow = this.host.attachShadow({ mode: 'open' });
 
       const style = document.createElement('style');
