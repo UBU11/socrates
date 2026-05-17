@@ -3,3 +3,5 @@ ARCHITECTURE.md
 .wrangler
 /node_modules
 /.output
+docs
+todos
