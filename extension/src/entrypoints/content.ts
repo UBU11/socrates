@@ -1,3 +1,4 @@
+import tailwindStyles from '@/assets/main.css?inline';
 import {
   type TranscriptResult,
   extractCaptionTracks,
@@ -218,9 +219,18 @@ class TranscriptController {
     if (!this.host) {
       this.host = document.createElement('aside');
       this.host.id = HOST_ID;
-      this.host.style.display = 'block';
+      this.host.classList.add('block');
       this.shadow = this.host.attachShadow({ mode: 'open' });
-      this.shadow.innerHTML = this.getPanelMarkup();
+
+      const style = document.createElement('style');
+      style.textContent = tailwindStyles;
+      this.shadow.appendChild(style);
+
+      const content = document.createElement('div');
+      content.id = 'socrates-root';
+      content.innerHTML = this.getPanelMarkup();
+      this.shadow.appendChild(content);
+
       this.bindPanelActions();
     }
 
@@ -317,97 +327,6 @@ class TranscriptController {
 
   private getPanelMarkup(): string {
     return `
-      <style>
-        :host {
-          display: block;
-          margin: 0 0 16px;
-          font-family: Roboto, Arial, sans-serif;
-          color: #0f0f0f;
-        }
-
-        .panel {
-          border: 1px solid #d8d8d8;
-          border-radius: 8px;
-          background: #fff;
-          overflow: hidden;
-        }
-
-        .header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 12px 14px;
-          border-bottom: 1px solid #ececec;
-        }
-
-        .title {
-          margin: 0;
-          font-size: 15px;
-          font-weight: 700;
-          line-height: 1.2;
-        }
-
-        .actions {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-        }
-
-        button {
-          min-height: 32px;
-          border: 1px solid #c9c9c9;
-          border-radius: 6px;
-          background: #f7f7f7;
-          color: #111;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 600;
-          padding: 0 10px;
-          cursor: pointer;
-        }
-
-        button:hover:not(:disabled) {
-          background: #ececec;
-        }
-
-        button:disabled {
-          color: #888;
-          cursor: not-allowed;
-        }
-
-        .body {
-          padding: 12px 14px 14px;
-        }
-
-        .status {
-          margin: 0 0 4px;
-          font-size: 13px;
-          line-height: 1.35;
-        }
-
-        .meta {
-          margin: 0 0 10px;
-          color: #606060;
-          font-size: 12px;
-          line-height: 1.35;
-        }
-
-        textarea {
-          box-sizing: border-box;
-          width: 100%;
-          min-height: 180px;
-          max-height: 360px;
-          resize: vertical;
-          border: 1px solid #d7d7d7;
-          border-radius: 6px;
-          background: #fbfbfb;
-          color: #111;
-          font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          padding: 10px;
-        }
-      </style>
       <section class="panel" aria-label="Socrates transcript extractor">
         <div class="header">
           <h2 class="title">Socrates Transcript</h2>
