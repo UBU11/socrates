@@ -327,19 +327,19 @@ class TranscriptController {
 
   private getPanelMarkup(): string {
     return `
-      <section class="panel" aria-label="Socrates transcript extractor">
-        <div class="header">
-          <h2 class="title">Socrates Transcript</h2>
-          <div class="actions">
-            <button type="button" data-extract>Extract</button>
-            <button type="button" data-copy disabled>Copy</button>
-            <button type="button" data-download disabled>Download</button>
+      <section class="border border-[#d8d8d8] rounded-lg bg-white overflow-hidden mb-4 font-roboto text-[#0f0f0f]" aria-label="Socrates transcript extractor">
+        <div class="flex items-center justify-between gap-3 p-3 border-b border-[#ececec]">
+          <h2 class="m-0 text-[15px] font-bold leading-tight">Socrates Transcript</h2>
+          <div class="flex gap-2 flex-wrap justify-end">
+            <button type="button" data-extract class="min-h-[32px] border border-[#c9c9c9] rounded-md bg-[#f7f7f7] text-[#111] text-[13px] font-semibold px-2.5 cursor-pointer hover:enabled:bg-[#ececec] disabled:text-[#888] disabled:cursor-not-allowed">Extract</button>
+            <button type="button" data-copy disabled class="min-h-[32px] border border-[#c9c9c9] rounded-md bg-[#f7f7f7] text-[#111] text-[13px] font-semibold px-2.5 cursor-pointer hover:enabled:bg-[#ececec] disabled:text-[#888] disabled:cursor-not-allowed">Copy</button>
+            <button type="button" data-download disabled class="min-h-[32px] border border-[#c9c9c9] rounded-md bg-[#f7f7f7] text-[#111] text-[13px] font-semibold px-2.5 cursor-pointer hover:enabled:bg-[#ececec] disabled:text-[#888] disabled:cursor-not-allowed">Download</button>
           </div>
         </div>
-        <div class="body">
-          <p class="status" data-status>Transcript not extracted.</p>
-          <p class="meta" data-meta>No transcript loaded.</p>
-          <textarea data-transcript readonly spellcheck="false" aria-label="Extracted transcript"></textarea>
+        <div class="p-3 pb-3.5">
+          <p class="m-0 mb-1 text-[13px] border-b-0 leading-[1.35]" data-status>Transcript not extracted.</p>
+          <p class="m-0 mb-2.5 text-[#606060] text-[12px] leading-[1.35]" data-meta>No transcript loaded.</p>
+          <textarea data-transcript readonly spellcheck="false" aria-label="Extracted transcript" class="box-border w-full min-h-[180px] max-h-[360px] resize-y border border-[#d7d7d7] rounded-md bg-[#fbfbfb] text-[#111] text-[12px] leading-relaxed p-2.5 font-mono"></textarea>
         </div>
       </section>
     `;
