@@ -11,6 +11,8 @@ import {
 import { readCachedTranscript, writeCachedTranscript } from './storage';
 import { TranscriptPanelView } from './view';
 import { isTranscriptMessage, getErrorMessage } from './utils';
+import { fetchSocraticQuestion } from '@/utils/ai';
+import { db } from '@/DB/db';
 import type { TranscriptState } from './types';
 
 export class TranscriptController {
@@ -19,6 +21,12 @@ export class TranscriptController {
     videoId: getCurrentVideoId(),
     result: null,
     error: null,
+    
+    // Socratic AI states
+    aiStatus: 'idle',
+    socraticCard: null,
+    userAnswer: '',
+    savedAnswer: null,
   };
 
   private extractionPromise: Promise<TranscriptResult> | null = null;
@@ -26,11 +34,19 @@ export class TranscriptController {
   private mutationTimer: number | null = null;
 
   constructor() {
-    this.view = new TranscriptPanelView(() => {
-      void this.extract({ force: Boolean(this.state.result) }).catch(() => {
-        this.view.render(this.state);
-      });
-    });
+    this.view = new TranscriptPanelView(
+      () => {
+        void this.extract({ force: Boolean(this.state.result) }).catch(() => {
+          this.view.render(this.state);
+        });
+      },
+      () => {
+        void this.consultSocrates();
+      },
+      (answer: string) => {
+        void this.submitAnswer(answer);
+      }
+    );
   }
 
   start(): void {
@@ -58,6 +74,7 @@ export class TranscriptController {
       const cached = await readCachedTranscript(videoId);
       if (cached) {
         this.state = {
+          ...this.state,
           status: 'ready',
           videoId,
           result: cached,
@@ -73,6 +90,7 @@ export class TranscriptController {
     }
 
     this.state = {
+      ...this.state,
       status: 'loading',
       videoId,
       result: null,
@@ -83,6 +101,7 @@ export class TranscriptController {
     this.extractionPromise = this.extractFresh(videoId, options.languageCode)
       .then(async (result) => {
         this.state = {
+          ...this.state,
           status: 'ready',
           videoId,
           result,
@@ -93,6 +112,7 @@ export class TranscriptController {
       })
       .catch((error: unknown) => {
         this.state = {
+          ...this.state,
           status: 'error',
           videoId,
           result: null,
@@ -131,6 +151,64 @@ export class TranscriptController {
     };
   }
 
+  private async consultSocrates(): Promise<void> {
+    if (!this.state.result || this.state.result.segments.length === 0) {
+      return;
+    }
+
+    this.state.aiStatus = 'fetching';
+    this.view.render(this.state);
+
+    try {
+      // Find the segment closest to the current video playback time
+      const video = document.querySelector('video');
+      const currentTime = video ? video.currentTime : 0;
+
+      let selectedSegment = this.state.result.segments[0];
+      for (const segment of this.state.result.segments) {
+        if (currentTime >= segment.startTime && currentTime <= segment.endTime) {
+          selectedSegment = segment;
+          break;
+        }
+      }
+
+      const card = await fetchSocraticQuestion({
+        segment: selectedSegment,
+        priorConcepts: [],
+        videoId: this.state.videoId || 'unknown',
+      });
+
+      this.state.aiStatus = 'ready';
+      this.state.socraticCard = card;
+      this.state.userAnswer = '';
+      this.state.savedAnswer = null;
+    } catch (error: unknown) {
+      this.state.aiStatus = 'error';
+      this.state.error = getErrorMessage(error);
+    } finally {
+      this.view.render(this.state);
+    }
+  }
+
+  private async submitAnswer(answer: string): Promise<void> {
+    if (!this.state.socraticCard) return;
+
+    try {
+      // Save Socratic answer into the Dexie notes table
+      const noteContent = `[Socratic Concept: ${this.state.socraticCard.concept}] Q: ${this.state.socraticCard.socraticQuestion} | Answer: ${answer}`;
+      await db.notes.add({
+        timestamp: Date.now(),
+        note: noteContent,
+      });
+
+      this.state.savedAnswer = answer;
+    } catch (error: unknown) {
+      console.error('Failed to save Socratic note in IndexedDB:', error);
+    } finally {
+      this.view.render(this.state);
+    }
+  }
+
   private bindMessages(): void {
     browser.runtime.onMessage.addListener((message: unknown) => {
       if (!isTranscriptMessage(message)) return undefined;
@@ -166,6 +244,10 @@ export class TranscriptController {
           videoId: nextVideoId,
           result: null,
           error: null,
+          aiStatus: 'idle',
+          socraticCard: null,
+          userAnswer: '',
+          savedAnswer: null,
         };
       }
 

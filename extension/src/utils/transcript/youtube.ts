@@ -80,7 +80,7 @@ export function readBalancedJsonObject(text: string, startIndex: number): string
   let escaped = false;
 
   for (let index = startIndex; index < text.length; index += 1) {
-    const char = text[index];
+    const char = text.charAt(index);
 
     if (quote) {
       if (escaped) {
