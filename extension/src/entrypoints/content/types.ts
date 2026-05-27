@@ -6,7 +6,7 @@ export type TranscriptState = {
   videoId: string | null;
   result: TranscriptResult | null;
   error: string | null;
-  
+
   // Socratic AI pipeline state attributes
   aiStatus: 'idle' | 'fetching' | 'ready' | 'error';
   socraticCard: SocraticCardData | null;

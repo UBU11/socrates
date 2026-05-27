@@ -8,7 +8,7 @@ export function extractCaptionTracks(playerResponse: PlayerResponse | null): Cap
   return tracks
     .filter((track) => Boolean(track.baseUrl && track.languageCode))
     .map((track) => ({
-      baseUrl: track.baseUrl!,
+      baseUrl: track.baseUrl!.replace(/&amp;/g, '&'),
       languageCode: track.languageCode!,
       label: readTrackLabel(track.name) || track.languageCode!,
       kind: track.kind,
@@ -52,7 +52,5 @@ export function selectCaptionTrack(
 }
 
 export function withTranscriptFormat(baseUrl: string): string {
-  const url = new URL(baseUrl);
-  url.searchParams.set('fmt', 'srv3');
-  return url.toString();
+  return baseUrl;
 }

@@ -33,7 +33,7 @@ export function readVideoTitle(playerResponse?: PlayerResponse | null): string {
   return document.title.replace(/\s+-\s+YouTube$/i, '').trim() || 'YouTube video';
 }
 
-export function readPlayerResponse(): PlayerResponse | null {
+export async function readPlayerResponse(videoId?: string): Promise<PlayerResponse | null> {
   const player = document.querySelector('#movie_player') as
     | (HTMLElement & { getPlayerResponse?: () => PlayerResponse })
     | null;
@@ -41,7 +41,9 @@ export function readPlayerResponse(): PlayerResponse | null {
   try {
     const response = player?.getPlayerResponse?.();
     if (response?.captions || response?.videoDetails) {
-      return response;
+      if (!videoId || response.videoDetails?.videoId === videoId) {
+        return response;
+      }
     }
   } catch {
     // Fall through to script parsing because YouTube alters or sandboxes the JS context regularly.
@@ -60,9 +62,44 @@ export function readPlayerResponse(): PlayerResponse | null {
     if (!objectText) continue;
 
     try {
-      return JSON.parse(objectText) as PlayerResponse;
+      const response = JSON.parse(objectText) as PlayerResponse;
+      if (!videoId || response.videoDetails?.videoId === videoId) {
+        return response;
+      }
     } catch {
       continue;
+    }
+  }
+
+  // Fallback: Fetch watch page HTML dynamically to parse fresh playerResponse
+  if (videoId) {
+    try {
+      const targetUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const htmlResponse = await fetch(targetUrl);
+      if (htmlResponse.ok) {
+        const htmlText = await htmlResponse.text();
+        const searchStr = 'ytInitialPlayerResponse';
+        let assignmentIndex = htmlText.indexOf(searchStr);
+        while (assignmentIndex !== -1) {
+          const objectStart = htmlText.indexOf('{', assignmentIndex);
+          if (objectStart !== -1) {
+            const objectText = readBalancedJsonObject(htmlText, objectStart);
+            if (objectText) {
+              try {
+                const response = JSON.parse(objectText) as PlayerResponse;
+                if (response.videoDetails?.videoId === videoId) {
+                  return response;
+                }
+              } catch {
+                // Ignore and try next match
+              }
+            }
+          }
+          assignmentIndex = htmlText.indexOf(searchStr, assignmentIndex + 1);
+        }
+      }
+    } catch (e) {
+      console.error('[Socrates] Failed to fetch fallback player response:', e);
     }
   }
 

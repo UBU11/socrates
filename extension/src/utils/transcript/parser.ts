@@ -2,19 +2,38 @@ import type { CaptionTrack, TranscriptCue } from './types';
 import { withTranscriptFormat } from './captionSelection';
 
 export async function fetchTranscriptCues(track: CaptionTrack): Promise<TranscriptCue[]> {
-  const response = await fetch(withTranscriptFormat(track.baseUrl), {
-    credentials: 'include',
+  const targetUrl = withTranscriptFormat(track.baseUrl);
+  console.log('[Socrates] Direct Caption URL:', targetUrl);
+  
+  // Route through Next.js proxy to bypass adblockers & isolated world restrictions
+  const response = await fetch('http://localhost:3000/api/transcript', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ baseUrl: targetUrl }),
   });
 
+  console.log('[Socrates] Proxy HTTP Response Status:', response.status);
+
   if (!response.ok) {
-    throw new Error(`Caption request failed with HTTP ${response.status}.`);
+    throw new Error(`Caption request failed via Proxy with HTTP ${response.status}.`);
   }
 
-  const payload = await response.text();
+  const result = await response.json() as { ok: boolean; payload?: string; error?: string };
+  if (!result.ok) {
+    throw new Error(result.error || 'Failed to fetch transcript via Proxy.');
+  }
+
+  const payload = result.payload ?? '';
+  console.log('[Socrates] Proxied Payload Body Length:', payload.length);
+  console.log('[Socrates] Proxied Payload Snippet:', payload.slice(0, 200));
+
   const cues = parseTranscriptPayload(payload);
 
   if (cues.length === 0) {
-    throw new Error('This caption track did not contain readable transcript text.');
+    console.error('[Socrates] Empty cues parsed from payload. Original response:', payload);
+    throw new Error(`This caption track did not contain readable transcript text. Payload preview: "${payload.slice(0, 150).replace(/\s+/g, ' ')}"`);
   }
 
   return cues;

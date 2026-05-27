@@ -129,7 +129,7 @@ export class TranscriptController {
   }
 
   private async extractFresh(videoId: string, languageCode?: string): Promise<TranscriptResult> {
-    const playerResponse = readPlayerResponse();
+    const playerResponse = await readPlayerResponse(videoId);
     const tracks = extractCaptionTracks(playerResponse);
     const selectedTrack = selectCaptionTrack(tracks, languageCode);
 
