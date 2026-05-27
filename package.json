@@ -3,20 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start",
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts",
     "compile": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.8.0"
   },
   "devDependencies": {
+    "tsx": "^4.7.0",
     "typescript": "^5.0.0",
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0"
+    "@types/node": "^20.0.0"
   }
 }
