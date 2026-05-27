@@ -1,161 +1,193 @@
 import type { CaptionTrack, TranscriptCue } from './types';
 import { withTranscriptFormat } from './captionSelection';
+import { parseTranscriptPayload } from './localParsers';
+import { readApiKey } from './youtube';
 
-export async function fetchTranscriptCues(track: CaptionTrack): Promise<TranscriptCue[]> {
-  const targetUrl = withTranscriptFormat(track.baseUrl);
-  console.log('[Socrates] Direct Caption URL:', targetUrl);
-  
-  // Route through Next.js proxy to bypass adblockers & isolated world restrictions
-  const response = await fetch('http://localhost:3000/api/transcript', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ baseUrl: targetUrl }),
-  });
+export async function fetchTranscriptCues(
+  track: CaptionTrack,
+  videoId?: string,
+  playerResponse?: any,
+): Promise<TranscriptCue[]> {
+  const vid = videoId ?? extractVideoIdFromUrl(track.baseUrl);
 
-  console.log('[Socrates] Proxy HTTP Response Status:', response.status);
+  if (playerResponse && vid) {
+    try {
+      const dynamicToken = findTranscriptParams(playerResponse);
+      const apiKey = readApiKey() ?? '';
+      if (dynamicToken) {
+        console.log('[Socrates] Attempting browser background InnerTube fetch with dynamic token...');
+        const response = (await browser.runtime.sendMessage({
+          type: 'SOCRATES_BG_TRANSCRIPT_FETCH',
+          params: dynamicToken,
+          videoId: vid,
+          apiKey,
+        })) as { ok: boolean; data?: any; error?: string };
 
-  if (!response.ok) {
-    throw new Error(`Caption request failed via Proxy with HTTP ${response.status}.`);
+        if (response && response.ok && response.data) {
+          const cues = parseInnerTubeJson(response.data);
+          if (cues.length > 0) {
+            console.log('[Socrates] Successfully parsed', cues.length, 'cues from background InnerTube fetch.');
+            return cues;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Socrates] Background InnerTube fetch failed, trying timedtext background fetch:', error);
+    }
   }
 
-  const result = await response.json() as { ok: boolean; payload?: string; error?: string };
+  try {
+    const targetUrl = withTranscriptFormat(track.baseUrl);
+    console.log('[Socrates] Attempting browser background fetch for URL:', targetUrl.slice(0, 100) + '...');
+
+    const response = (await browser.runtime.sendMessage({
+      type: 'SOCRATES_BG_FETCH',
+      url: targetUrl,
+    })) as { ok: boolean; text?: string; error?: string };
+
+    if (response && response.ok && response.text) {
+      console.log('[Socrates] Background timedtext fetch succeeded, payload length:', response.text.length);
+      const cues = parseTranscriptPayload(response.text);
+      if (cues.length > 0) {
+        return cues;
+      }
+    }
+  } catch (error) {
+    console.error('[Socrates] Background timedtext fetch failed, trying Next.js server proxy:', error);
+  }
+
+  if (!vid) {
+    throw new Error('Could not determine videoId for transcript fetch.');
+  }
+
+  console.log('[Socrates] Fetching transcript via Next.js server proxy for videoId:', vid);
+
+  const response = await fetch('http://127.0.0.1:3000/api/transcript', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      videoId: vid,
+      languageCode: track.languageCode,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Transcript proxy returned HTTP ${response.status}.`);
+  }
+
+  const result = (await response.json()) as {
+    ok: boolean;
+    cues?: TranscriptCue[];
+    payload?: string;
+    error?: string;
+  };
+
   if (!result.ok) {
-    throw new Error(result.error || 'Failed to fetch transcript via Proxy.');
+    throw new Error(result.error || 'Failed to fetch transcript via proxy.');
+  }
+
+  if (result.cues && result.cues.length > 0) {
+    console.log('[Socrates] Received', result.cues.length, 'pre-parsed cues from proxy');
+    return result.cues;
   }
 
   const payload = result.payload ?? '';
-  console.log('[Socrates] Proxied Payload Body Length:', payload.length);
-  console.log('[Socrates] Proxied Payload Snippet:', payload.slice(0, 200));
-
-  const cues = parseTranscriptPayload(payload);
-
-  if (cues.length === 0) {
-    console.error('[Socrates] Empty cues parsed from payload. Original response:', payload);
-    throw new Error(`This caption track did not contain readable transcript text. Payload preview: "${payload.slice(0, 150).replace(/\s+/g, ' ')}"`);
+  if (payload.length > 0) {
+    console.log('[Socrates] Received raw payload from proxy, length:', payload.length);
+    const cues = parseTranscriptPayload(payload);
+    if (cues.length > 0) return cues;
   }
 
-  return cues;
+  throw new Error(
+    'The transcript proxy was unable to extract captions for this video. ' +
+    'This may happen if the video has no captions or if YouTube is blocking automated requests.',
+  );
 }
 
-export function parseTranscriptPayload(payload: string): TranscriptCue[] {
-  const trimmed = payload.trim();
-  if (!trimmed) return [];
-
-  if (trimmed.startsWith('{')) {
-    return parseJson3Transcript(trimmed);
+function extractVideoIdFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.searchParams.get('v') ?? null;
+  } catch {
+    return null;
   }
-
-  if (trimmed.startsWith('WEBVTT')) {
-    return parseVttTranscript(trimmed);
-  }
-
-  return parseXmlTranscript(trimmed);
 }
 
-function parseJson3Transcript(payload: string): TranscriptCue[] {
-  const data = JSON.parse(payload) as {
-    events?: Array<{
-      tStartMs?: number;
-      dDurationMs?: number;
-      segs?: Array<{ utf8?: string }>;
-    }>;
-  };
+function findTranscriptParams(obj: unknown): string | null {
+  if (!obj || typeof obj !== 'object') return null;
 
-  return (data.events ?? [])
-    .map((event) => {
-      const text = normalizeTranscriptText(
-        (event.segs ?? []).map((segment) => segment.utf8 ?? '').join(''),
-      );
-      const start = (event.tStartMs ?? 0) / 1000;
-      const duration = (event.dDurationMs ?? 0) / 1000;
+  if (
+    'getTranscriptEndpoint' in obj &&
+    obj.getTranscriptEndpoint &&
+    typeof obj.getTranscriptEndpoint === 'object' &&
+    'params' in obj.getTranscriptEndpoint &&
+    typeof obj.getTranscriptEndpoint.params === 'string'
+  ) {
+    return obj.getTranscriptEndpoint.params;
+  }
 
-      return {
-        start,
-        duration,
-        end: start + duration,
+  for (const value of Object.values(obj)) {
+    const found = findTranscriptParams(value);
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function parseInnerTubeJson(data: any): TranscriptCue[] {
+  try {
+    const actions = data?.actions as Array<any> | undefined;
+    if (!actions || actions.length === 0) return [];
+
+    const panel = getNestedPath(actions[0], [
+      'updateEngagementPanelAction',
+      'content',
+      'transcriptRenderer',
+      'content',
+      'transcriptSearchPanelRenderer',
+      'body',
+      'transcriptSegmentListRenderer',
+      'initialSegments',
+    ]) as Array<any> | undefined;
+
+    if (!panel || panel.length === 0) return [];
+
+    const cues: TranscriptCue[] = [];
+
+    for (const item of panel) {
+      const renderer = item?.transcriptSegmentRenderer;
+      if (!renderer) continue;
+
+      const startMs = parseInt(renderer.startMs ?? '0', 10);
+      const endMs = parseInt(renderer.endMs ?? '0', 10);
+      const text = (renderer.snippet?.runs ?? [])
+        .map((r: any) => r.text ?? '')
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!text) continue;
+
+      cues.push({
+        start: startMs / 1000,
+        duration: (endMs - startMs) / 1000,
+        end: endMs / 1000,
         text,
-      };
-    })
-    .filter((cue) => cue.text.length > 0);
-}
+      });
+    }
 
-function parseXmlTranscript(payload: string): TranscriptCue[] {
-  const document = new DOMParser().parseFromString(payload, 'text/xml');
-  if (document.querySelector('parsererror')) {
-    throw new Error('Unable to parse the caption XML returned by YouTube.');
+    return cues;
+  } catch (error) {
+    console.error('[Socrates] InnerTube parse error:', error);
+    return [];
   }
+}
 
-  const legacyTextNodes = Array.from(document.querySelectorAll('text'));
-  if (legacyTextNodes.length > 0) {
-    return legacyTextNodes
-      .map((node) => {
-        const start = Number(node.getAttribute('start') ?? 0);
-        const duration = Number(node.getAttribute('dur') ?? 0);
-        const text = normalizeTranscriptText(node.textContent ?? '');
-
-        return {
-          start,
-          duration,
-          end: start + duration,
-          text,
-        };
-      })
-      .filter((cue) => cue.text.length > 0);
+function getNestedPath(obj: unknown, keys: string[]): unknown {
+  let current = obj;
+  for (const key of keys) {
+    if (current == null || typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[key];
   }
-
-  return Array.from(document.querySelectorAll('p'))
-    .map((node) => {
-      const start = Number(node.getAttribute('t') ?? 0) / 1000;
-      const duration = Number(node.getAttribute('d') ?? 0) / 1000;
-      const text = normalizeTranscriptText(node.textContent ?? '');
-
-      return {
-        start,
-        duration,
-        end: start + duration,
-        text,
-      };
-    })
-    .filter((cue) => cue.text.length > 0);
-}
-
-function parseVttTranscript(payload: string): TranscriptCue[] {
-  return payload
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter((block) => block.includes('-->'))
-    .map((block) => {
-      const lines = block.split('\n').map((line) => line.trim());
-      const timeLineIndex = lines.findIndex((line) => line.includes('-->'));
-      const [startText, endText] = lines[timeLineIndex].split('-->').map((value) => value.trim());
-      const start = parseVttTimestamp(startText);
-      const end = parseVttTimestamp(endText.split(/\s+/)[0]);
-      const text = normalizeTranscriptText(lines.slice(timeLineIndex + 1).join(' '));
-
-      return {
-        start,
-        duration: Math.max(0, end - start),
-        end,
-        text,
-      };
-    })
-    .filter((cue) => cue.text.length > 0);
-}
-
-function parseVttTimestamp(value: string): number {
-  const parts = value.split(':');
-  const seconds = Number(parts.pop()?.replace(',', '.') ?? 0);
-  const minutes = Number(parts.pop() ?? 0);
-  const hours = Number(parts.pop() ?? 0);
-
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
-function normalizeTranscriptText(value: string): string {
-  return value
-    .replace(/\s+/g, ' ')
-    .replace(/\s+([,.!?;:])/g, '$1')
-    .trim();
+  return current;
 }

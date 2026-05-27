@@ -16,7 +16,7 @@ export async function fetchSocraticQuestion(params: {
   priorConcepts: string[];
   videoId: string;
 }): Promise<SocraticCardData> {
-  const response = await fetch('http://localhost:3000/api/socratic', {
+  const response = await fetch('http://127.0.0.1:3000/api/socratic', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

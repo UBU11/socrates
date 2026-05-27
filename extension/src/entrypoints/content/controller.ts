@@ -21,8 +21,6 @@ export class TranscriptController {
     videoId: getCurrentVideoId(),
     result: null,
     error: null,
-    
-    // Socratic AI states
     aiStatus: 'idle',
     socraticCard: null,
     userAnswer: '',
@@ -137,7 +135,7 @@ export class TranscriptController {
       throw new Error('No caption track is available for this video.');
     }
 
-    const cues = await fetchTranscriptCues(selectedTrack);
+    const cues = await fetchTranscriptCues(selectedTrack, videoId, playerResponse);
 
     return {
       videoId,
@@ -160,7 +158,6 @@ export class TranscriptController {
     this.view.render(this.state);
 
     try {
-      // Find the segment closest to the current video playback time
       const video = document.querySelector('video');
       const currentTime = video ? video.currentTime : 0;
 
@@ -194,7 +191,6 @@ export class TranscriptController {
     if (!this.state.socraticCard) return;
 
     try {
-      // Save Socratic answer into the Dexie notes table
       const noteContent = `[Socratic Concept: ${this.state.socraticCard.concept}] Q: ${this.state.socraticCard.socraticQuestion} | Answer: ${answer}`;
       await db.notes.add({
         timestamp: Date.now(),

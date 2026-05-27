@@ -46,7 +46,7 @@ export async function readPlayerResponse(videoId?: string): Promise<PlayerRespon
       }
     }
   } catch {
-    // Fall through to script parsing because YouTube alters or sandboxes the JS context regularly.
+    // YouTube's player sandbox can sometimes restrict context sharing
   }
 
   const scripts = Array.from(document.scripts);
@@ -71,11 +71,9 @@ export async function readPlayerResponse(videoId?: string): Promise<PlayerRespon
     }
   }
 
-  // Fallback: Fetch watch page HTML dynamically to parse fresh playerResponse
   if (videoId) {
     try {
-      const targetUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const htmlResponse = await fetch(targetUrl);
+      const htmlResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
       if (htmlResponse.ok) {
         const htmlText = await htmlResponse.text();
         const searchStr = 'ytInitialPlayerResponse';
@@ -106,6 +104,17 @@ export async function readPlayerResponse(videoId?: string): Promise<PlayerRespon
   return null;
 }
 
+export function readApiKey(): string | null {
+  const scripts = Array.from(document.scripts);
+  for (const script of scripts) {
+    const text = script.textContent ?? '';
+    const match = text.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/i) ||
+                  text.match(/"innertubeApiKey"\s*:\s*"([^"]+)"/i);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 export function readTrackLabel(name?: { simpleText?: string; runs?: Array<{ text?: string }> }): string {
   if (name?.simpleText) return name.simpleText;
   return (name?.runs ?? []).map((run) => run.text ?? '').join('').trim();
@@ -127,7 +136,6 @@ export function readBalancedJsonObject(text: string, startIndex: number): string
       } else if (char === quote) {
         quote = null;
       }
-
       continue;
     }
 

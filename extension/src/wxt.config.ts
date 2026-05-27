@@ -3,9 +3,16 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: () => ({
+    oxc: false,
+    build: {
+      minify: 'esbuild',
+    },
     server: {
       port: 3007,
       strictPort: true,
+    },
+    esbuild: {
+      charset: 'ascii',
     },
   }),
   dev: {

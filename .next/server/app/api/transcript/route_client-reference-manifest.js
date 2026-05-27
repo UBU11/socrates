@@ -1,0 +1,1 @@
+globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/transcript/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"/home/ubu/Documents/AI/socrates/":[],"/home/ubu/Documents/AI/socrates/app/api/transcript/route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}}

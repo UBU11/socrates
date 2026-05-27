@@ -22,35 +22,63 @@ export function selectCaptionTrack(
 ): CaptionTrack | null {
   if (tracks.length === 0) return null;
 
+  const findBestTrack = (language: string): CaptionTrack | null => {
+    const lang = language.toLowerCase();
+    const primary = lang.split('-')[0];
+    
+    // 1. Try to find manual track with exact language match
+    const exactManual = tracks.find(
+      (t) => t.languageCode.toLowerCase() === lang && t.kind !== 'asr'
+    );
+    if (exactManual) return exactManual;
+
+    // 2. Try to find manual track with primary language match
+    const primaryManual = tracks.find(
+      (t) => t.languageCode.toLowerCase().split('-')[0] === primary && t.kind !== 'asr'
+    );
+    if (primaryManual) return primaryManual;
+
+    // 3. Fallback to auto-generated track with exact language match
+    const exactAsr = tracks.find(
+      (t) => t.languageCode.toLowerCase() === lang && t.kind === 'asr'
+    );
+    if (exactAsr) return exactAsr;
+
+    // 4. Fallback to auto-generated track with primary language match
+    const primaryAsr = tracks.find(
+      (t) => t.languageCode.toLowerCase().split('-')[0] === primary && t.kind === 'asr'
+    );
+    if (primaryAsr) return primaryAsr;
+
+    return null;
+  };
+
   if (requestedLanguage) {
-    const requested = requestedLanguage.toLowerCase();
-    const exact = tracks.find((track) => track.languageCode.toLowerCase() === requested);
-    if (exact) return exact;
+    const match = findBestTrack(requestedLanguage);
+    if (match) return match;
   }
 
-  const browserLanguage = navigator.language.toLowerCase();
-  const browserPrimary = browserLanguage.split('-')[0];
-  const browserMatch = tracks.find(
-    (track) => track.languageCode.toLowerCase() === browserLanguage,
-  );
-  if (browserMatch) return browserMatch;
+  const browserLanguage = navigator.language;
+  const match = findBestTrack(browserLanguage);
+  if (match) return match;
 
-  const browserPrimaryMatch = tracks.find(
-    (track) => track.languageCode.toLowerCase().split('-')[0] === browserPrimary,
-  );
-  if (browserPrimaryMatch) return browserPrimaryMatch;
-
+  // English manual fallback
   const englishManual = tracks.find(
-    (track) => track.languageCode.toLowerCase().startsWith('en') && track.kind !== 'asr',
+    (t) => t.languageCode.toLowerCase().startsWith('en') && t.kind !== 'asr'
   );
   if (englishManual) return englishManual;
 
-  const english = tracks.find((track) => track.languageCode.toLowerCase().startsWith('en'));
-  if (english) return english;
+  // English auto fallback
+  const englishAsr = tracks.find(
+    (t) => t.languageCode.toLowerCase().startsWith('en') && t.kind === 'asr'
+  );
+  if (englishAsr) return englishAsr;
 
-  return tracks.find((track) => track.kind !== 'asr') ?? tracks[0];
+  return tracks.find((t) => t.kind !== 'asr') ?? tracks[0];
 }
 
 export function withTranscriptFormat(baseUrl: string): string {
-  return baseUrl;
+  const url = new URL(baseUrl);
+  url.searchParams.set('fmt', 'json3');
+  return url.toString();
 }

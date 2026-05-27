@@ -61,7 +61,6 @@ export class TranscriptPanelView {
     this.lastState = state;
     if (!this.shadow) return;
 
-    // Render original transcript panel elements
     const status = this.shadow.querySelector<HTMLElement>('[data-status]');
     const meta = this.shadow.querySelector<HTMLElement>('[data-meta]');
     const transcript = this.shadow.querySelector<HTMLTextAreaElement>('[data-transcript]');
@@ -88,7 +87,6 @@ export class TranscriptPanelView {
       downloadButton.disabled = !hasTranscript;
     }
 
-    // Render Socratic Card Container
     this.renderSocraticSection(state);
   }
 
@@ -235,7 +233,6 @@ export class TranscriptPanelView {
         </div>
       `;
 
-      // Event bindings
       if (!state.savedAnswer) {
         const textarea = container.querySelector<HTMLTextAreaElement>('[data-user-answer]');
         const submitBtn = container.querySelector<HTMLButtonElement>('[data-submit-answer]');
@@ -272,7 +269,6 @@ export class TranscriptPanelView {
           <p class="m-0 mb-2.5 text-[#606060] text-[12px] leading-[1.35]" data-meta>No transcript loaded.</p>
           <textarea data-transcript readonly spellcheck="false" aria-label="Extracted transcript" class="box-border w-full min-h-[180px] max-h-[320px] resize-y border border-[#d7d7d7] rounded-md bg-[#fbfbfb] text-[#111] text-[12px] leading-relaxed p-2.5 font-mono mb-2"></textarea>
         </div>
-        <!-- Programmatic container for the Socratic Card -->
         <div class="p-3 border-t border-[#ececec]" data-socratic-container style="display: none;"></div>
       </section>
     `;
