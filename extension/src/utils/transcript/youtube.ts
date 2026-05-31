@@ -34,6 +34,42 @@ export function readVideoTitle(playerResponse?: PlayerResponse | null): string {
 }
 
 export async function readPlayerResponse(videoId?: string): Promise<PlayerResponse | null> {
+  try {
+    const injectedResponse = await new Promise<PlayerResponse | null>((resolve) => {
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === 'SOCRATES_PLAYER_RESPONSE_EXTRACTED') {
+          window.removeEventListener('message', handler);
+          const response = event.data.payload as PlayerResponse;
+          if (!videoId || response.videoDetails?.videoId === videoId) {
+            resolve(response);
+          } else {
+            resolve(null);
+          }
+        }
+      };
+      window.addEventListener('message', handler);
+
+      const script = document.createElement('script');
+      script.src = browser.runtime.getURL('/inject.js');
+      (document.head || document.documentElement).appendChild(script);
+      script.onload = () => script.remove();
+
+      // Fallback timeout if injection fails or doesn't fire
+      setTimeout(() => {
+        window.removeEventListener('message', handler);
+        resolve(null);
+      }, 1000);
+    });
+
+    if (injectedResponse) {
+      console.log('[Socrates] Successfully grabbed YouTube data from main world memory!');
+      return injectedResponse;
+    }
+  } catch (e) {
+    console.error('[Socrates] Main world injection failed:', e);
+  }
+
+  // 2. Fallback to existing sandbox scraping
   const player = document.querySelector('#movie_player') as
     | (HTMLElement & { getPlayerResponse?: () => PlayerResponse })
     | null;

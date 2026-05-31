@@ -28,5 +28,11 @@ export default defineConfig({
     action: {
       default_title: 'Socrates Transcript',
     },
+    web_accessible_resources: [
+      {
+        resources: ['inject.js'],
+        matches: ['*://*.youtube.com/*'],
+      },
+    ],
   },
 });
