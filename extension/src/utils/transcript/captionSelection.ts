@@ -78,7 +78,7 @@ export function selectCaptionTrack(
 }
 
 export function withTranscriptFormat(baseUrl: string): string {
-  const url = new URL(baseUrl);
+  const url = new URL(baseUrl, 'https://www.youtube.com');
   url.searchParams.set('fmt', 'json3');
   return url.toString();
 }

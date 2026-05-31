@@ -6,6 +6,7 @@ export default defineUnlistedScript(() => {
         {
           type: 'SOCRATES_PLAYER_RESPONSE_EXTRACTED',
           payload: playerResponse,
+          initialData: (window as any).ytInitialData,
         },
         '*',
       );

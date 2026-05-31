@@ -40,6 +40,9 @@ export async function readPlayerResponse(videoId?: string): Promise<PlayerRespon
         if (event.data?.type === 'SOCRATES_PLAYER_RESPONSE_EXTRACTED') {
           window.removeEventListener('message', handler);
           const response = event.data.payload as PlayerResponse;
+          if ((event.data as any).initialData) {
+            (response as any)._socratesInitialData = (event.data as any).initialData;
+          }
           if (!videoId || response.videoDetails?.videoId === videoId) {
             resolve(response);
           } else {

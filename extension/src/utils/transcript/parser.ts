@@ -1,3 +1,4 @@
+declare const chrome: any;
 import type { CaptionTrack, TranscriptCue } from './types';
 import { withTranscriptFormat } from './captionSelection';
 import { parseTranscriptPayload } from './localParsers';
@@ -12,16 +13,24 @@ export async function fetchTranscriptCues(
 
   if (playerResponse && vid) {
     try {
-      const dynamicToken = findTranscriptParams(playerResponse);
+      let dynamicToken = findTranscriptParams(playerResponse);
+      if (!dynamicToken && playerResponse._socratesInitialData) {
+        dynamicToken = findTranscriptParams(playerResponse._socratesInitialData);
+      }
       const apiKey = readApiKey() ?? '';
       if (dynamicToken) {
         console.log('[Socrates] Attempting browser background InnerTube fetch with dynamic token...');
-        const response = (await browser.runtime.sendMessage({
-          type: 'SOCRATES_BG_TRANSCRIPT_FETCH',
-          params: dynamicToken,
-          videoId: vid,
-          apiKey,
-        })) as { ok: boolean; data?: any; error?: string };
+        const response = await new Promise<{ ok: boolean; data?: any; error?: string }>((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            type: 'SOCRATES_BG_TRANSCRIPT_FETCH',
+            params: dynamicToken,
+            videoId: vid,
+            apiKey,
+          }, (res) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(res);
+          });
+        });
 
         if (response && response.ok && response.data) {
           const cues = parseInnerTubeJson(response.data);
@@ -40,10 +49,15 @@ export async function fetchTranscriptCues(
     const targetUrl = withTranscriptFormat(track.baseUrl);
     console.log('[Socrates] Attempting browser background fetch for URL:', targetUrl.slice(0, 100) + '...');
 
-    const response = (await browser.runtime.sendMessage({
-      type: 'SOCRATES_BG_FETCH',
-      url: targetUrl,
-    })) as { ok: boolean; text?: string; error?: string };
+    const response = await new Promise<{ ok: boolean; text?: string; error?: string }>((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'SOCRATES_BG_FETCH',
+        url: targetUrl,
+      }, (res) => {
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(res);
+      });
+    });
 
     if (response && response.ok && response.text) {
       console.log('[Socrates] Background timedtext fetch succeeded, payload length:', response.text.length);
@@ -106,7 +120,7 @@ export async function fetchTranscriptCues(
 
 function extractVideoIdFromUrl(url: string): string | null {
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(url, 'https://www.youtube.com');
     return parsed.searchParams.get('v') ?? null;
   } catch {
     return null;

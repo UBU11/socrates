@@ -18,11 +18,19 @@ import { safetyParseSocraticCard } from '@/lib/ai/parsers';
 const app = new Hono();
 
 app.use('*', logger());
-app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'OPTIONS', 'HEAD'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use('*', async (c, next) => {
+  if (c.req.method === 'OPTIONS') {
+    c.header('Access-Control-Allow-Origin', '*');
+    c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+    c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    c.header('Access-Control-Allow-Private-Network', 'true');
+    return c.text('', 200);
+  }
+
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Private-Network', 'true');
+  await next();
+});
 
 app.post('/api/transcript', async (c) => {
   try {

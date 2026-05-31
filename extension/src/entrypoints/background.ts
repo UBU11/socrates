@@ -15,7 +15,7 @@ export default defineBackground(() => {
       const { url } = message as { url: string };
       console.log('[Socrates Background] Fetching URL:', url);
 
-      fetch(url)
+      fetch(url, { credentials: 'include' })
         .then(async (response) => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
