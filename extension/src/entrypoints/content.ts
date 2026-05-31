@@ -1,10 +1,7 @@
-import { TranscriptController } from './content/controller';
-
 export default defineContentScript({
-  matches: ['*://youtube.com/*', '*://*.youtube.com/*'],
+  matches: ['*://*/*'],
   runAt: 'document_idle',
   main() {
-    const controller = new TranscriptController();
-    controller.start();
+    console.log('Content script loaded');
   },
 });
